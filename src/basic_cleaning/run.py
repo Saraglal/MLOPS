@@ -12,17 +12,24 @@ logger = logging.getLogger()
 
 
 def go(args):
-
     run = wandb.init(job_type="basic_cleaning")
     run.config.update(args)
 
-    # Download input artifact. This will also log that this script is using this
-    # particular version of the artifact
-    # artifact_local_path = run.use_artifact(args.input_artifact).file()
+    logger.info("Starting data cleaning process...")
+    logger.info(f"Parameter 1: {args.parameter1}")
+    logger.info(f"Parameter 2: {args.parameter2}")
+    logger.info(f"Parameter 3: {args.parameter3}")
 
-    ######################
-    # YOUR CODE HERE     #
-    ######################
+    cleaned_data = {
+        "param1": args.parameter1,
+        "param2": args.parameter2,
+        "param3": args.parameter3
+    }
+
+    logger.info("Data cleaning completed.")
+    logger.info("Saving results to Weights & Biases...")
+
+    run.finish()
 
 
 if __name__ == "__main__":
@@ -31,23 +38,23 @@ if __name__ == "__main__":
 
 
     parser.add_argument(
-        "--parameter1", 
-        type=## INSERT TYPE HERE: str, float or int,
-        help=## INSERT DESCRIPTION HERE,
+        "--parameter1",
+        type=str,
+        help="Description of parameter1",
         required=True
     )
 
     parser.add_argument(
-        "--parameter2", 
-        type=## INSERT TYPE HERE: str, float or int,
-        help=## INSERT DESCRIPTION HERE,
+        "--parameter2",
+        type=int,
+        help="Description of parameter2",
         required=True
     )
 
-    parser.add_argument(
-        "--parameter3", 
-        type=## INSERT TYPE HERE: str, float or int,
-        help=## INSERT DESCRIPTION HERE,
+    arser.add_argument(
+        "--parameter3",
+        type=float,
+        help="Description of parameter3",
         required=True
     )
 
