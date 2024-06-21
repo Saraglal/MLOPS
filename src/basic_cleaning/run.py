@@ -51,7 +51,7 @@ if __name__ == "__main__":
         required=True
     )
 
-    arser.add_argument(
+    parser.add_argument(
         "--parameter3",
         type=float,
         help="Description of parameter3",
