@@ -6,6 +6,7 @@ import argparse
 import logging
 import wandb
 import pandas as pd
+import os
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)-15s %(message)s")
@@ -14,71 +15,50 @@ logger = logging.getLogger()
 
 def go(args):
 
-    run = wandb.init(job_type="basic_cleaning1")
+    os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
+
+    run = wandb.init(job_type="job_t_cleaning")
     run.config.update(args)
+
+
 
     # Download input artifact. This will also log that this script is using this
     # particular version of the artifact
     # artifact_local_path = run.use_artifact(args.input_artifact).file()
 
-    ######################
-    # Setup logging
-    logging.basicConfig(level=logging.INFO)
-    logger = logging.getLogger(__name__)
+    artifact_local_path = run.use_artifact(args.input_artifact).file()
+    logger.info(f"Downloaded input artifact to {artifact_local_path}")
 
-    # Define and parse command-line arguments
-    parser = argparse.ArgumentParser(description="Process Airbnb data")
-    parser.add_argument('--min_price', type=float, required=True, help='Minimum price to filter outliers')
-    parser.add_argument('--max_price', type=float, required=True, help='Maximum price to filter outliers')
-    args = parser.parse_args()
+    # Read the input data
+    df = pd.read_csv(artifact_local_path)
 
-    # Initialize a W&B run
-    run = wandb.init(project="nyc_airbnb", group="eda", save_code=True)
-    logger.info("Initialized W&B run.")
-
-    # Download the artifact and read the data into a DataFrame
-    local_path = wandb.use_artifact("sample.csv:latest").file()
-    logger.info(f"Downloaded artifact and stored at {local_path}.")
-    df = pd.read_csv(local_path)
-    logger.info("Data loaded into a DataFrame.")
-
-    # Generate a pandas profiling report
-    import pandas_profiling
-
-    profile = pandas_profiling.ProfileReport(df)
-    profile.to_widgets()
-    logger.info("Generated pandas profiling report.")
-
-    # Drop outliers based on price using args.min_price and args.max_price
+    # Basic data cleaning: Remove outliers
     min_price = args.min_price
     max_price = args.max_price
-    idx = df['price'].between(min_price, max_price)
+
+    logger.info(f"Removing outliers outside the range {min_price} to {max_price}")
+    df = df[df['price'].between(min_price, max_price)].copy()
+
+    # Drop rows with missing values
+    logger.info("Dropping rows with missing values")
+    df.dropna(inplace=True)
+
+    # Save cleaned data to a CSV file
+    cleaned_data_path = "clean_sample.csv"
+    idx = df['longitude'].between(-74.25, -73.50) & df['latitude'].between(40.5, 41.2)
     df = df[idx].copy()
-    logger.info(f"Dropped outliers outside the range {min_price} to {max_price}.")
+    df.to_csv(cleaned_data_path, index=False)
+    logger.info(f"Cleaned data saved to {cleaned_data_path}")
 
-    # Convert the 'last_review' column to datetime
-    df['last_review'] = pd.to_datetime(df['last_review'])
-    logger.info("Converted 'last_review' column to datetime.")
-
-    # Save the cleaned DataFrame to a CSV file
-    output_file = "clean_sample.csv"
-    df.to_csv(output_file, index=False)
-    logger.info(f"Saved the cleaned DataFrame to {output_file}.")
-
-    # Display DataFrame info
-    df.info()
-
-    # Finish the W&B run
-    run.finish()
-    logger.info("W&B run finished.")
-
+    # Log the cleaned data to Weights & Biases
     artifact = wandb.Artifact(
-     args.output_artifact,
-     type=args.output_type,
-     description=args.output_description,
+        args.output_artifact,
+        type=args.output_type,
+        description=args.output_description,
     )
-    artifact.add_file("clean_sample.csv")
+    artifact.add_file(cleaned_data_path)
     run.log_artifact(artifact)
+    logger.info("Cleaned data artifact logged to Weights & Biases")
     ######################
 
 
